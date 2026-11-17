@@ -16,7 +16,9 @@
   --muted: #52655d;
   --line: #dce3dc;
   --accent: #1c5c4e;
-  --on-accent:#fff;
+  --on-accent: #fff;
+  --nav-selected-bg: #dfe9dd;
+  --nav-selected-ink: #1e5144;
   --soft: #edf2e8;
   --warm: #f4ead3;
   --red: #a33030;
@@ -98,7 +100,7 @@ button:disabled {
 }
 button.primary,
 .button.primary {
-  color: #fff;
+  color: var(--on-accent);
   background: var(--accent);
   border-color: var(--accent);
 }
@@ -256,12 +258,11 @@ small {
 }
 .sidebar nav a span {
   font-size: 0.65rem;
-  opacity: 0.7;
   font-variant-numeric: tabular-nums;
 }
 .sidebar nav a[aria-current] {
-  background: #dfe9dd;
-  color: #1e5144;
+  background: var(--nav-selected-bg);
+  color: var(--nav-selected-ink);
 }
 .sidebar nav a:hover {
   background: #e5ece1;
@@ -626,7 +627,7 @@ footer {
 .filters button[aria-pressed="true"],
 .presets button[aria-pressed="true"] {
   background: var(--accent);
-  color:var(--on-accent);
+  color: var(--on-accent);
 }
 .material-grid,
 .phrase-grid {
@@ -1435,7 +1436,9 @@ dialog::backdrop {
   }
 }
 :root[data-theme="dark"] {
-  --on-accent:#122c21;
+  --on-accent: #122c21;
+  --nav-selected-bg: #3c5646;
+  --nav-selected-ink: #e7f1df;
   --bg: #182824;
   --paper: #20342e;
   --ink: #ecf0e8;
@@ -1483,7 +1486,9 @@ dialog::backdrop {
 }
 @media (prefers-color-scheme: dark) {
   :root[data-theme="system"] {
-    --on-accent:#122c21;
+    --on-accent: #122c21;
+    --nav-selected-bg: #3c5646;
+    --nav-selected-ink: #e7f1df;
     --bg: #182824;
     --paper: #20342e;
     --ink: #ecf0e8;

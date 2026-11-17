@@ -155,11 +155,41 @@ test("microphone denial leaves text practice available without an AI connection"
   );
   await expect(page.getByLabel("テキストで話す")).toBeEnabled();
 });
-test('dark themes and 200 percent text keep primary layouts accessible',async({page})=>{
-  await page.emulateMedia({colorScheme:'dark',reducedMotion:'reduce'});
-  for(const theme of ['dark','system'])for(const route of ['/#/','/#/practice','/#/settings','/#/material/demo']){
-    await page.goto(route);await expect(page.locator('main h1')).toBeVisible();await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;document.documentElement.style.fontSize='200%';},theme);
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${theme} ${route}`).toBe(true);
-    const results=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();expect(results.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({html:n.html,summary:n.failureSummary}))})),`${theme} ${route}`).toEqual([]);
-  }
+test("dark themes and 200 percent text keep primary layouts accessible", async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+  for (const theme of ["dark", "system"])
+    for (const route of [
+      "/#/",
+      "/#/practice",
+      "/#/settings",
+      "/#/material/demo",
+    ]) {
+      await page.goto(route);
+      await expect(page.locator("main h1")).toBeVisible();
+      await page.evaluate((theme) => {
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.fontSize = "200%";
+      }, theme);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        `${theme} ${route}`,
+      ).toBe(true);
+      const results = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze();
+      expect(
+        results.violations.map((v) => ({
+          id: v.id,
+          nodes: v.nodes.map((n) => ({
+            html: n.html,
+            summary: n.failureSummary,
+          })),
+        })),
+        `${theme} ${route}`,
+      ).toEqual([]);
+    }
 });
