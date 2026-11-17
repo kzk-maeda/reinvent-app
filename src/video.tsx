@@ -26,7 +26,11 @@ function loadYouTube() {
       script.src = "https://www.youtube.com/iframe_api";
       script.onerror = () => {
         youtubeReady = undefined;
-        reject(new Error("YouTubeプレイヤーを読み込めませんでした"));
+        reject(
+          new Error(
+            "YouTubeの補助操作を読み込めませんでした。動画内の再生ボタン、または元動画をご利用ください。",
+          ),
+        );
       };
       document.head.append(script);
     });
@@ -100,34 +104,51 @@ function Player({
   }, [en, ja, m.id]);
   useEffect(() => {
     let disposed = false;
-    if (!m.fixture)
+    let frame: HTMLIFrameElement | undefined;
+    if (!m.fixture && host.current) {
+      frame = document.createElement("iframe");
+      frame.title = m.title;
+      // YouTube requires an HTTP Referer (error 153 without it). Set the policy
+      // before navigation, including when the Vite dev server serves the page.
+      frame.referrerPolicy = "strict-origin-when-cross-origin";
+      frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+      frame.allowFullscreen = true;
+      const embed = new URL(
+        `https://www.youtube-nocookie.com/embed/${m.youtubeId}`,
+      );
+      embed.search = new URLSearchParams({
+        enablejsapi: "1",
+        origin: location.origin,
+        playsinline: "1",
+        start: String(Math.floor(m.positionMs / 1000)),
+      }).toString();
+      frame.src = embed.href;
+      host.current.append(frame);
       void loadYouTube()
         .then(() => {
-          if (disposed || !host.current) return;
-          const child = document.createElement("div");
-          host.current.append(child);
-          player.current = new window.YT.Player(child, {
-            host: "https://www.youtube-nocookie.com",
-            videoId: m.youtubeId,
-            playerVars: {
-              playsinline: 1,
-              origin: location.origin,
-              start: Math.floor(m.positionMs / 1000),
-            },
+          if (disposed || !frame) return;
+          player.current = new window.YT.Player(frame, {
             events: {
               onReady: () => setReady(true),
               onStateChange: (event: any) => {
                 playingRef.current = event.data === 1;
                 setPlaying(event.data === 1);
               },
-              onError: () =>
+              onError: () => {
+                setReady(false);
+                playingRef.current = false;
+                setPlaying(false);
                 setPlayerError(
                   "この動画は埋め込み再生できません。元のYouTubeページをご確認ください。",
-                ),
+                );
+              },
             },
           });
         })
-        .catch((e) => setPlayerError(e.message));
+        .catch((e) => {
+          if (!disposed) setPlayerError(e.message);
+        });
+    }
     const save = () =>
       void api(
         `/materials/${m.id}`,
@@ -150,6 +171,7 @@ function Player({
       save();
       document.removeEventListener("visibilitychange", hidden);
       player.current?.destroy?.();
+      frame?.remove();
     };
   }, [m.id]);
   useEffect(() => {
@@ -236,6 +258,16 @@ function Player({
         <p className="eyebrow">{m.topic} / LISTENING LAB</p>
         <h1>{m.title}</h1>
         <p className="muted">{m.reason}</p>
+        {!m.fixture && (
+          <p className="muted">
+            {m.publisher && `${m.publisher} · re:Invent ${m.year} · `}
+            <a href={m.url} target="_blank" rel="noopener noreferrer">
+              YouTubeで開く ↗
+            </a>
+            {!m.captions &&
+              " · アプリの英日字幕は未準備です。YouTube内の字幕は、動画側で提供されている場合に利用できます。"}
+          </p>
+        )}
       </div>
       {m.fixture && (
         <p className="warning">

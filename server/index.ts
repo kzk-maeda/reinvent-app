@@ -52,7 +52,7 @@ const { app, voice } = createApp(store, config);
 await voice.recover();
 app.use("*", async (c, next) => {
   c.header("X-Content-Type-Options", "nosniff");
-  c.header("Referrer-Policy", "same-origin");
+  c.header("Referrer-Policy", "strict-origin-when-cross-origin");
   c.header(
     "Permissions-Policy",
     "camera=(), geolocation=(), microphone=(self)",

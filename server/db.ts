@@ -3,6 +3,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { defaultProfile, type Material } from "../shared/domain.ts";
 import { fixtureCues } from "../shared/content.ts";
+import { curatedMaterials } from "../shared/catalog.ts";
 export class Store {
   db: DatabaseSync;
   constructor(path: string) {
@@ -42,6 +43,16 @@ export class Store {
         },
       } satisfies Material);
       this.put("meta", "seed-v1", true);
+    }
+    if (!this.get("meta", "curated-videos-v1")) {
+      this.transaction(() => {
+        // all() lists newest rows first; keep the introductory AI selection first.
+        for (const material of [...curatedMaterials].reverse()) {
+          if (!this.get("material", material.id))
+            this.put("material", material.id, material);
+        }
+        this.put("meta", "curated-videos-v1", true);
+      });
     }
   }
   get<T>(kind: string, id: string): T | undefined {

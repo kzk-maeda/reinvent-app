@@ -520,9 +520,16 @@ function Materials({ data, run, refresh, busy }: PageProps) {
               </div>
               <div className="card-content">
                 <span className="tag">
-                  {m.status === "ready" ? "字幕の準備済み" : "音声の確保待ち"}
+                  {m.captions
+                    ? "アプリ字幕の準備済み"
+                    : "YouTubeで視聴 · アプリ字幕未準備"}
                 </span>
                 <h2>{m.title}</h2>
+                {m.publisher && (
+                  <p className="muted">
+                    {m.publisher} · re:Invent {m.year} · {m.difficulty}
+                  </p>
+                )}
                 <p>
                   {m.reason ||
                     "YouTubeで再生できます。英日字幕には教材準備が必要です。"}

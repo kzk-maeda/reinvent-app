@@ -40,6 +40,7 @@ export type Material = {
   topic: string;
   url: string;
   youtubeId?: string;
+  publisher?: string;
   year?: number;
   difficulty: string;
   reason: string;
