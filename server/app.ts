@@ -70,6 +70,16 @@ export function createApp(
     if (!m) throw new Error("教材が見つかりません");
     return m;
   };
+  const requireConnection = (s: PracticeSession) => {
+    if (
+      s.provider !== config.provider ||
+      (s.textModel && s.textModel !== config.textModel) ||
+      (s.voiceModel && s.voiceModel !== config.voiceModel)
+    )
+      throw new Error(
+        "AI接続設定が変更されています。保存済みの会話は参照でき、新しい設定で練習を始められます。",
+      );
+  };
   const profile = () => store.get<Profile>("profile", "self")!;
   async function operation<T>(key: string | undefined, run: () => Promise<T>) {
     if (!key || !z.string().uuid().safeParse(key).success)
@@ -481,6 +491,8 @@ export function createApp(
       id: randomUUID(),
       status: "ready",
       provider: config.provider,
+      textModel: config.textModel,
+      voiceModel: config.voiceModel,
       createdAt: now(),
       turns: [],
       hintCount: 0,
@@ -520,6 +532,7 @@ export function createApp(
       await sessionLock(id, () =>
         operation(c.req.header("Idempotency-Key"), async () => {
           const s = getSession(id);
+          requireConnection(s);
           if (s.status !== "ready")
             throw new Error("テキスト会話を開始できない状態です");
           const user = {
@@ -566,6 +579,7 @@ export function createApp(
       await sessionLock(id, () =>
         operation(c.req.header("Idempotency-Key"), async () => {
           const s = getSession(id);
+          requireConnection(s);
           const reply = await ai.json(
             "hint",
             "Convert the learner intent into a short English question, with a brief Japanese explanation. Return {text}.",
@@ -595,6 +609,7 @@ export function createApp(
     return c.json(
       await sessionLock(id, async () => {
         const s = getSession(id);
+        requireConnection(s);
         if (s.status !== "ready")
           throw new Error(
             "この会話は音声接続できません。新しい会話を開始してください",
@@ -618,6 +633,7 @@ export function createApp(
         await voice.stop(id);
         const s = getSession(id);
         if (s.feedback) return s;
+        requireConnection(s);
         if (!s.turns.some((t) => t.role === "user"))
           throw new Error("発話を残してから振り返りを作成してください");
         return operation(c.req.header("Idempotency-Key"), async () => {

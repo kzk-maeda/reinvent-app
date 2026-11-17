@@ -1,3 +1,4 @@
+import { voiceRates } from "../shared/models.ts";
 import WebSocket from "ws";
 import { randomUUID } from "node:crypto";
 import { Store } from "./db.ts";
@@ -69,7 +70,7 @@ export class VoiceManager {
     this.store.put("voice-call", call.record.id, call.record);
   }
   async start(id: string, sdp: string, profile: Profile) {
-    if (!this.config.apiKey || this.config.voiceModel !== "gpt-realtime")
+    if (!this.config.apiKey || !voiceRates[this.config.voiceModel])
       throw new Error(
         "音声APIキーまたは検証済みモデルの設定を確認してください",
       );
@@ -227,6 +228,7 @@ export class VoiceManager {
     const s = this.getSession(id);
     if (!call || !s) return;
     const r = call.record;
+    const rate = voiceRates[this.config.voiceModel];
     r.pendingInputs ??= [];
     r.pendingResponses ??= [];
     if (
@@ -318,10 +320,10 @@ export class VoiceManager {
         r.uncertain = true;
       else
         r.usd +=
-          (i.text_tokens * 4 +
-            i.audio_tokens * 32 +
-            o.text_tokens * 16 +
-            o.audio_tokens * 64) /
+          (i.text_tokens * rate.textInput +
+            i.audio_tokens * rate.audioInput +
+            o.text_tokens * rate.textOutput +
+            o.audio_tokens * rate.audioOutput) /
           1e6;
       if (
         r.usd * (r.usdJpy || this.budget.usdJpy) >

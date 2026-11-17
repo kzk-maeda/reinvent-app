@@ -223,3 +223,26 @@ it("retains unknown AI costs and never automatically resends an ambiguous operat
   expect(fetcher).toHaveBeenCalledTimes(1);
   expect(lab.budget.snapshot().events[0].status).toBe("reserved");
 });
+it("never changes a saved simulator session into a paid session after server reconfiguration", async () => {
+  const session = (await (
+    await req("/practice-sessions", {
+      mode: "ネットワーキング",
+      packId: "networking",
+      goal: "ask a question",
+      training: true,
+    })
+  ).json()) as any;
+  const fetcher = vi.fn();
+  lab = createApp(
+    s,
+    { ...config, provider: "openai", apiKey: "fake-test-key" },
+    fetcher,
+  );
+  const response = await req(`/practice-sessions/${session.id}/turns`, {
+    text: "What does it do?",
+  });
+  expect(response.status).toBe(400);
+  expect(((await response.json()) as any).error).toContain("AI接続設定が変更");
+  expect(fetcher).not.toHaveBeenCalled();
+  expect(lab.budget.snapshot().totalYen).toBe(0);
+});

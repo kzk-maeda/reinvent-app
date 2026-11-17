@@ -279,7 +279,7 @@ function Session({
           {data.packs.find((p) => p.id === session.packId)?.partner}
         </p>
       </div>
-      {data.connections.simulator && (
+      {session.provider === "simulator" && (
         <p className="warning">
           操作検証モード：応答と講評は固定例です。実際の英語力・製品知識の評価は行いません。
         </p>

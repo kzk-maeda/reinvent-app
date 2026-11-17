@@ -62,6 +62,7 @@ it("runs the real CLI against the local API and resumes without duplicated steps
             ...process.env,
             LAB_URL: `http://127.0.0.1:${address.port}`,
             LAB_PASSWORD: config.password,
+            TEXT_MODEL: config.textModel,
           },
         });
         let output = "";

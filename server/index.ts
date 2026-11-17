@@ -1,3 +1,4 @@
+import { DEFAULT_TEXT_MODEL, DEFAULT_VOICE_MODEL } from "../shared/models.ts";
 import "dotenv/config";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
@@ -28,14 +29,21 @@ const config: AppConfig = {
   origin: process.env.APP_ORIGIN,
   provider: process.env.AI_PROVIDER === "openai" ? "openai" : "simulator",
   apiKey: process.env.OPENAI_API_KEY,
-  textModel: process.env.TEXT_MODEL || "gpt-4.1-mini",
-  voiceModel: process.env.VOICE_MODEL || "gpt-realtime",
+  textModel: process.env.TEXT_MODEL || DEFAULT_TEXT_MODEL,
+  voiceModel: process.env.VOICE_MODEL || DEFAULT_VOICE_MODEL,
   transcriptionModel: "whisper-1",
   monthlyBudget: number("MONTHLY_BUDGET_YEN", 3000),
   usdJpy: number("USD_JPY", 150),
   voiceReservationYen: number("VOICE_RESERVATION_YEN", 500),
   maxSeconds: Math.min(number("VOICE_MAX_SECONDS", 600), 600),
 };
+if (
+  process.env.TRANSCRIPTION_MODEL &&
+  process.env.TRANSCRIPTION_MODEL !== "whisper-1"
+)
+  throw new Error(
+    "時刻付き字幕には現在whisper-1を使います。別モデルには時刻合わせアダプターが必要です",
+  );
 const store = new Store(process.env.DATABASE_PATH || ".local/lab.sqlite");
 for (const s of store.all<any>("session"))
   if (["active", "connecting"].includes(s.status))

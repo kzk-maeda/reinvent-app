@@ -18,13 +18,15 @@
 
 予算は整数の1/1000円単位、JST暦月で管理。通常のテキスト処理は5円、音声は初期値500円を予約し、確認できたusageだけを確定します。復元通話・進行中の応答・未着の文字起こし・不明なAPI失敗は予約を残します。請求記録を確認した本人が設定から照合できます。並行予約と教材ごとの上限もサーバーで検査します。厳密な請求上限の保証ではありません。
 
-モデルと料金はgpt-4.1-mini、gpt-realtime、whisper-1の明示的なアダプターです。新モデル名だけを環境変数で指定して未知の料金で課金処理を始めることはできません。実利用前に公式の単価とアカウントでの提供状況を確認してください。
+既定モデルはgpt-6-lunaとgpt-realtime-2.1です。Standardの公式モデルページの単価を使い、テキストはreasoning=noneで短い応答に合わせます。旧gpt-4.1-mini・gpt-realtimeも明示的な料金アダプターを持ちます。whisper-1は時刻取得用に残しますが、公式ガイドでは2027-02-26までの経過措置です。それ以後は字幕ファイルの取り込みか、新STTとアラインメントへの移行が必要です。新モデル名だけを環境変数で指定して未知の料金で課金処理を始めることはできません。実利用前に公式の単価とアカウントでの提供状況を確認してください。
 
 参照した公式API：
 
 - [WebRTCの統合接続](https://developers.openai.com/api/docs/guides/voice-webrtc?voice-api=realtime)
 - [サーバー側制御](https://developers.openai.com/api/docs/guides/voice-server-controls?voice-api=realtime)
 - [料金](https://developers.openai.com/api/docs/pricing)
+- [GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna) / [GPT-Realtime-2.1](https://developers.openai.com/api/docs/models/gpt-realtime-2.1)
+- [Whisper時刻情報の提供期限](https://developers.openai.com/api/docs/guides/speech-to-text#timestamps)
 
 ## 教材CLI
 

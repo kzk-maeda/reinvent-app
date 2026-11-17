@@ -1,3 +1,4 @@
+import { DEFAULT_TEXT_MODEL } from "../shared/models.ts";
 import "dotenv/config";
 import { createHash, randomUUID } from "node:crypto";
 import {
@@ -164,7 +165,7 @@ async function main() {
   const settings = {
     version: 1,
     model: "whisper-1",
-    translationModel: "gpt-4.1-mini",
+    translationModel: process.env.TEXT_MODEL || DEFAULT_TEXT_MODEL,
     dictionary: "aws-v1",
     chunkSeconds: 180,
     overlapSeconds: 2,
@@ -283,6 +284,9 @@ async function main() {
   });
   try {
     await request("/login", { password });
+    const connection = await request("/ai-connections");
+    if (connection.textModel !== settings.translationModel)
+      throw new Error("CLIのTEXT_MODELをサーバーの設定と一致させてください");
     const catalog = await request("/catalog");
     const material = catalog.materials.find(
       (m: any) => m.id === values.material,
@@ -481,8 +485,8 @@ async function main() {
       permission: values.permission,
       inputHash,
       model: values.captions
-        ? "imported-subtitles + gpt-4.1-mini"
-        : "whisper-1 + gpt-4.1-mini",
+        ? `imported-subtitles + ${settings.translationModel}`
+        : `whisper-1 + ${settings.translationModel}`,
       generatedAt: now(),
       cues,
     });

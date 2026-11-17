@@ -80,6 +80,8 @@ export type PracticeSession = {
     | "interrupted"
     | "failed";
   provider: string;
+  textModel?: string;
+  voiceModel?: string;
   createdAt: string;
   endedAt?: string;
   turns: Turn[];
