@@ -12,6 +12,12 @@ export type ConversationPack = {
   facts: string[];
   questions: string[];
   scenario?: ConversationScenario;
+  company?: {
+    name: string;
+    character: string;
+    demo: string;
+    introduction: string;
+  };
 };
 export const packs: ConversationPack[] = [
   {
@@ -47,13 +53,21 @@ export const packs: ConversationPack[] = [
     title: "Tableflow × Databricks",
     topic: "データ基盤",
     partner: "公開デモを題材にした架空の担当者",
-    date: "2026-11-17",
+    date: "2026-11-19",
     source:
       "https://www.confluent.io/resources/online-talk/tableflow-databricks-demo/",
     facts: [
-      "公式のTableflowとDatabricks連携デモ案内を題材にする。",
-      "詳細仕様・価格・最新の出展は未確認。確認できない質問は実ブース用の質問として保存する。",
+      "公式デモでは、TableflowでKafkaトピックをDeltaテーブルにし、Unity Catalogへ登録する流れを紹介している。",
+      "ConfluentとDatabricksをつなぎ、ストリーミングデータを分析やAIに活用する題材。",
+      "資料にない最新リリース、価格、提供条件、会場の出展状況は未確認。",
     ],
+    company: {
+      name: "Confluent",
+      character: "Alex",
+      demo: "Tableflow and Databricks integration",
+      introduction:
+        "I'm Alex from Confluent. Today I can walk you through Tableflow and its Databricks integration: bringing Kafka data into Delta tables and Unity Catalog. Would you like a quick overview or a step-by-step walkthrough?",
+    },
     questions: [
       "How would this fit into our existing data platform?",
       "How do you handle schema changes?",
@@ -64,13 +78,21 @@ export const packs: ConversationPack[] = [
     title: "複数エージェントの設計",
     topic: "AI",
     partner: "公開デモを題材にした架空の担当者",
-    date: "2026-11-17",
+    date: "2026-11-19",
     source:
       "https://www.databricks.com/resources/demos/videos/build-multi-agent-genai-system",
     facts: [
-      "公式のBuild a Multi-Agent GenAI Systemデモを題材にする。",
-      "デモ内容の詳細と価格は未確認。製品機能を即興で断定しない。",
+      "公式のAgent Bricksデモでは、PDFを質問できる知識アシスタントと、複数部門のエージェントをまとめる構成を紹介している。",
+      "MLflowのトレースと独自指標による評価、自然言語フィードバックによる改善を扱う。",
+      "資料にない最新リリース、価格、提供条件、会場の出展状況は未確認。",
     ],
+    company: {
+      name: "Databricks",
+      character: "Sam",
+      demo: "Agent Bricks multi-agent system",
+      introduction:
+        "I'm Sam from Databricks. I can show you an Agent Bricks demo: a knowledge assistant and a supervisor coordinating agents across departments. Would you like to start with the assistant or how we evaluate its answers?",
+    },
     questions: [
       "How do you evaluate an agent?",
       "Can I trace the decisions of each agent?",

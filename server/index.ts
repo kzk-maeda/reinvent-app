@@ -48,7 +48,7 @@ const store = new Store(process.env.DATABASE_PATH || ".local/lab.sqlite");
 for (const s of store.all<any>("session"))
   if (["active", "connecting"].includes(s.status))
     store.put("session", s.id, { ...s, status: "interrupted" });
-const { app, voice } = createApp(store, config);
+const { app, voice, speech } = createApp(store, config);
 await voice.recover();
 app.use("*", async (c, next) => {
   c.header("X-Content-Type-Options", "nosniff");
@@ -76,6 +76,7 @@ let closing = false;
 async function close() {
   if (closing) return;
   closing = true;
+  speech.close();
   await voice.close();
   server.close(() => {
     store.close();

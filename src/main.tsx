@@ -43,6 +43,7 @@ export type Run = <T>(
 export type PageProps = {
   data: Snapshot;
   refresh: () => Promise<void>;
+  refreshUsage: () => Promise<void>;
   run: Run;
   busy: boolean;
 };
@@ -70,6 +71,11 @@ function App() {
     const d = await api<Snapshot>("/bootstrap");
     setData(d);
     setAuth(true);
+  }, []);
+  const refreshUsage = useCallback(async () => {
+    const usage = await api<Snapshot["usage"]>("/usage");
+    // A late cost response must never restore a logged-out data snapshot.
+    setData((current) => (current ? { ...current, usage } : current));
   }, []);
   const run: Run = async (task, message = "保存しました") => {
     setBusy(true);
@@ -152,7 +158,7 @@ function App() {
         }
       />
     );
-  const props = { data, refresh, run, busy };
+  const props = { data, refresh, refreshUsage, run, busy };
   const logout = () =>
     run(async () => {
       await api("/logout", {});
@@ -1067,7 +1073,7 @@ function DeleteButton({
     </>
   );
 }
-function Settings({ data, run, refresh, busy }: PageProps) {
+function Settings({ data, run, refresh, refreshUsage, busy }: PageProps) {
   const [p, setP] = useState(data.profile);
   const update = (key: keyof Profile, value: unknown) =>
     setP({ ...p, [key]: value });
@@ -1250,12 +1256,14 @@ function Settings({ data, run, refresh, busy }: PageProps) {
             </details>
             <BudgetSettings
               data={data}
+              refreshUsage={refreshUsage}
               run={run}
               refresh={refresh}
               busy={busy}
             />
             <UsageReconciliation
               data={data}
+              refreshUsage={refreshUsage}
               run={run}
               refresh={refresh}
               busy={busy}

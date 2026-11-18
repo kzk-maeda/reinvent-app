@@ -39,8 +39,115 @@ beforeEach(async () => {
   cookie = r.headers.get("set-cookie")!.split(";")[0];
 });
 afterEach(async () => {
+  lab.speech.close();
   await lab.voice.close();
   s.close();
+});
+it("translates utterances through a dedicated provider, caches them, and invalidates corrections", async () => {
+  await lab.voice.close();
+  const fetcher = vi.fn().mockImplementation(
+    async () =>
+      new Response(
+        JSON.stringify({
+          id: "translated",
+          status: "completed",
+          output: [
+            {
+              content: [
+                {
+                  type: "output_text",
+                  text: JSON.stringify({ text: "会社名を教えてください。" }),
+                },
+              ],
+            },
+          ],
+          usage: { input_tokens: 100, output_tokens: 20 },
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+  );
+  lab = createApp(
+    s,
+    { ...config, provider: "openai", apiKey: "fake-key" },
+    fetcher,
+  );
+  const session = (await (
+    await req("/practice-sessions", {
+      packId: "confluent",
+      mode: "企業デモ",
+      goal: "会社名を聞く",
+    })
+  ).json()) as any;
+  s.put("session", session.id, {
+    ...session,
+    turns: [
+      {
+        id: "user-turn",
+        role: "user",
+        text: "What is your company name?",
+        at: new Date().toISOString(),
+      },
+    ],
+  });
+  const path = `/practice-sessions/${session.id}/turns/user-turn/translation`;
+  expect((await req(path, {}, "POST", false)).status).toBe(401);
+  const first = await req(path, {});
+  expect(first.status).toBe(200);
+  expect(((await first.json()) as any).translation).toBe(
+    "会社名を教えてください。",
+  );
+  expect(((await (await req(path, {})).json()) as any).cached).toBe(true);
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(fetcher.mock.calls[0][1].body).instructions).toContain(
+    "Translate the English conversation utterance",
+  );
+  expect(s.get<any>("session", session.id).turns[0].translation).toBe(
+    "会社名を教えてください。",
+  );
+  await req(
+    `/practice-sessions/${session.id}/turns/user-turn`,
+    { text: "Could you show me a demo?" },
+    "PATCH",
+  );
+  expect(
+    s.get<any>("session", session.id).turns[0].translation,
+  ).toBeUndefined();
+  await req(path, {});
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(
+    lab.budget.snapshot().events.every((event) => event.kind === "translation"),
+  ).toBe(true);
+});
+it("keeps simulator history from becoming paid translation or speech after reconnecting", async () => {
+  const session = (await (
+    await req("/practice-sessions", {
+      packId: "confluent",
+      mode: "企業デモ",
+      goal: "会社名を聞く",
+    })
+  ).json()) as any;
+  s.put("session", session.id, {
+    ...session,
+    turns: [
+      { id: "old", role: "user", text: "Hello", at: new Date().toISOString() },
+    ],
+  });
+  const path = `/practice-sessions/${session.id}/turns/old`;
+  await req(`${path}/translation`, {});
+  expect(s.get<any>("session", session.id).turns[0].translationProvider).toBe(
+    "simulator",
+  );
+  await lab.voice.close();
+  const fetcher = vi.fn();
+  lab = createApp(
+    s,
+    { ...config, provider: "openai", apiKey: "fake-key" },
+    fetcher,
+  );
+  expect((await req(`${path}/translation`, {})).status).toBe(400);
+  expect((await req(`${path}/speech`, {})).status).toBe(400);
+  expect(fetcher).not.toHaveBeenCalled();
+  expect(lab.budget.snapshot().events).toHaveLength(0);
 });
 it("protects every data and AI boundary and rejects CSRF", async () => {
   for (const path of [

@@ -1,30 +1,66 @@
 import { it, expect, vi } from "vitest";
 import { Store } from "../server/db.ts";
 import { Budget } from "../server/budget.ts";
-import { TextAI, replySchema } from "../server/ai.ts";
+import {
+  TextAI,
+  replySchema,
+  instructions,
+  simulatedRoleplay,
+} from "../server/ai.ts";
+import { defaultProfile, type PracticeSession } from "../shared/domain.ts";
 import { VoiceManager } from "../server/voice.ts";
+it("keeps company identity and prepared demos in character without asserting unverified releases", () => {
+  for (const [packId, company] of [
+    ["confluent", "Confluent"],
+    ["databricks", "Databricks"],
+  ]) {
+    const session = {
+      packId,
+      mode: "企業デモ",
+      goal: "会社名と最新デモを聞く",
+      turns: [],
+    } as unknown as PracticeSession;
+    const prompt = instructions(session, defaultProfile);
+    expect(prompt).toContain(`booth engineer at ${company}`);
+    expect(prompt).toContain("without claiming it is the latest release");
+    expect(prompt).toContain(
+      "If explicitly asked whether you are a real employee",
+    );
+    const response = simulatedRoleplay(
+      session,
+      "What is your company name? I'd like to know some demos of your latest products.",
+    );
+    expect(response).toContain(`from ${company}`);
+    expect(response).not.toContain("fictional demo chat");
+    expect(response).not.toContain("not a company representative");
+    expect(simulatedRoleplay(session, "Are you a real employee?")).toContain(
+      "I'm an AI",
+    );
+    expect(simulatedRoleplay(session, "What is the exact price?")).toContain(
+      "I don't have that detail here",
+    );
+  }
+});
 it("uses the current text model rate card and disables reasoning for short responses", async () => {
   const store = new Store(":memory:");
   const budget = new Budget(store, 3000, 150);
-  const fetcher = vi
-    .fn()
-    .mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          id: "response",
-          status: "completed",
-          output: [
-            { content: [{ type: "output_text", text: '{"text":"Hello"}' }] },
-          ],
-          usage: {
-            input_tokens: 1000,
-            output_tokens: 500,
-            input_tokens_details: { cached_tokens: 200 },
-          },
-        }),
-        { headers: { "Content-Type": "application/json" } },
-      ),
-    );
+  const fetcher = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        id: "response",
+        status: "completed",
+        output: [
+          { content: [{ type: "output_text", text: '{"text":"Hello"}' }] },
+        ],
+        usage: {
+          input_tokens: 1000,
+          output_tokens: 500,
+          input_tokens_details: { cached_tokens: 200 },
+        },
+      }),
+      { headers: { "Content-Type": "application/json" } },
+    ),
+  );
   const ai = new TextAI(
     {
       provider: "openai",

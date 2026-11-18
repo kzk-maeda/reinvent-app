@@ -57,6 +57,9 @@ export type Turn = {
   at: string;
   heard?: boolean;
   hint?: boolean;
+  translation?: string;
+  translationProvider?: string;
+  translationModel?: string;
 };
 export type Feedback = {
   positive: string;
