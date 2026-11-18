@@ -34,7 +34,7 @@ export function simulatedRoleplay(session: PracticeSession, text: string) {
     )
       return "I'm an AI playing the booth engineer for this practice. Shall we continue with the demo?";
     if (/price|cost|sla|latest release|価格|料金/i.test(text))
-      return "I don't have that detail here. I can explain the prepared demo and help you identify what to check for your use case. What would you like to explore first?";
+      return "I don't have that detail here. I can explain this demo and help you identify what to check for your use case. What would you like to explore first?";
     return pack.company.introduction;
   }
   const scenario = packs.find((p) => p.id === session.packId)?.scenario;
@@ -73,7 +73,7 @@ export function simulatedRoleplay(session: PracticeSession, text: string) {
     }
     if (topic) return topic.reply;
     if (text.toLowerCase() === scenario.confirmation.toLowerCase())
-      return "Yes, that's right. AI helps with implementation, while engineers remain responsible for the decisions and the result. That's how our fictional team approaches it.";
+      return "Yes, that's right. AI helps with implementation, while engineers remain responsible for the decisions and the result. That's how our team approaches it.";
     return "Hi! I'm happy to compare notes on how our team builds software with AI. What would you like to know about our tools, team structure, or how engineers' roles are changing?";
   }
   return session.turns.length < 3
@@ -82,7 +82,7 @@ export function simulatedRoleplay(session: PracticeSession, text: string) {
       ? "Of course. Let me put it another way. What part would you like me to explain?"
       : /thank|bye/i.test(text)
         ? "You are welcome. Enjoy the rest of the conference!"
-        : "That is a useful question. I cannot verify the product details from these materials. What would you ask the real team?";
+        : "Could you tell me a little about your setup? Then we can work through an example together.";
 }
 
 export function simulatedHint(session: PracticeSession, intent: string) {

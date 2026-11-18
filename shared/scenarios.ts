@@ -39,7 +39,7 @@ export const aiDevelopmentScenario: ConversationScenario = {
         "導入範囲",
       ],
       reply:
-        "Most engineers on our fictional team use AI daily for coding, tests, and documentation. We also use it to explore design options. Engineers still define the problem, review changes, and decide what ships. Adoption varies by task; we don't measure it simply as the percentage of code generated.",
+        "Most engineers on our team use AI daily for coding, tests, and documentation. We also use it to explore design options. Engineers still define the problem, review changes, and decide what ships. Adoption varies by task; we don't measure it simply as the percentage of code generated.",
       example:
         "For a small API change, an engineer writes the acceptance criteria, asks AI for a draft and test cases, then checks both. CI runs the tests. A teammate reviews the change, and a human approves deployment. AI helps with the work, but it doesn't own the release.",
     },
@@ -63,7 +63,7 @@ export const aiDevelopmentScenario: ConversationScenario = {
         "内製",
       ],
       reply:
-        "We use commercial AI assistants with a thin internal platform on top. Our own layer supplies repository context and connects the workflow to CI. Two platform engineers maintain it. We haven't built our own model, and we're not assuming a particular vendor for this practice scenario.",
+        "We use commercial AI assistants with a thin internal platform on top. Our own layer supplies repository context and connects the workflow to CI. Two platform engineers maintain it. We haven't built our own model; our focus is integration and shared context.",
       example:
         "When an engineer starts a change, our platform provides relevant repository guidance and links to CI results. The shared layer standardizes that context. Product teams choose how to use the assistant, while the platform group maintains the integration and gathers feedback.",
     },
