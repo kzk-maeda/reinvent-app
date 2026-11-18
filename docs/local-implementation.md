@@ -56,6 +56,6 @@ Container Queries・Popover・Anchor Positioningを主要操作の前提にせ�
 
 ## 未検証・残る受け入れ確認
 
-実APIキー・利用可能な実教材音声はこの環境に未設定です。実OpenAI音声/STT/翻訳の疎通、実re:Invent動画との500ms以内同期、実費、iPhone Safari実機・VoiceOver、PCのEdge/Safari/Firefox、実測Web Vitalsの目標達成は未検証です。初期教材はAWS Events公式の実動画3件（AI・SRE・データ基盤）、独自作成の字幕操作サンプル1件、公開資料を題材にした会話パック4件、独自フレーズ36件です。実動画のアプリ字幕は未準備で、この環境のYouTube接続制限により実再生も未確認です。[動画の出典と確認範囲](video-catalog.md)を参照してください。公開資料に書かれた詳細製品仕様の取り込み・検証は残っています。
+実APIキー・利用可能な実教材音声はこの環境に未設定です。実OpenAI音声/STT/翻訳の疎通、実re:Invent動画との500ms以内同期、実費、iPhone Safari実機・VoiceOver、PCのEdge/Safari/Firefox、実測Web Vitalsの目標達成は未検証です。初期教材はAWS Events公式の実動画3件（AI・SRE・データ基盤）、独自作成の字幕操作サンプル1件、会話パック5件（うち「AI時代の開発手法を聞く」は架空の開発チームとの情報交換）、独自フレーズ36件です。実動画のアプリ字幕は未準備で、この環境のYouTube接続制限により実再生も未確認です。[動画の出典と確認範囲](video-catalog.md)を参照してください。公開資料に書かれた詳細製品仕様の取り込み・検証は残っています。
 
 ChatGPT利用枠は未接続と表示し、自動切替しません。クラウド公開も行っていません。これらをローカル検証モードの成功と混同しないでください。

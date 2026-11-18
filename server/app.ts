@@ -15,6 +15,8 @@ import {
   replySchema,
   feedbackSchema,
   instructions,
+  simulatedRoleplay,
+  simulatedHint,
   type AIConfig,
 } from "./ai.ts";
 import { VoiceManager } from "./voice.ts";
@@ -473,6 +475,7 @@ export function createApp(
           "AWS技術相談",
           "技術トレンド",
           "ネットワーキング",
+          "エンジニアとの情報交換",
           "動画から会話",
           "旅行練習",
         ]),
@@ -549,14 +552,7 @@ export function createApp(
             s.turns.slice(-30),
             replySchema,
             {
-              text:
-                s.turns.length < 3
-                  ? "Hi! What would you like to learn about today?"
-                  : /again|slow|repeat/i.test(text)
-                    ? "Of course. Let me put it another way. What part would you like me to explain?"
-                    : /thank|bye/i.test(text)
-                      ? "You are welcome. Enjoy the rest of the conference!"
-                      : "That is a useful question. I cannot verify the product details from these materials. What would you ask the real team?",
+              text: simulatedRoleplay(s, text),
             },
           );
           s.turns.push({
@@ -586,7 +582,7 @@ export function createApp(
             { intent: text },
             replySchema,
             {
-              text: "Could you explain that with an example? — 例を使って説明してもらえますか？",
+              text: simulatedHint(s, text),
             },
           );
           const latest = getSession(id);

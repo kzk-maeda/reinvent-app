@@ -1,4 +1,19 @@
-export const packs = [
+import {
+  aiDevelopmentScenario,
+  type ConversationScenario,
+} from "./scenarios.ts";
+export type ConversationPack = {
+  id: string;
+  title: string;
+  topic: string;
+  partner: string;
+  date: string;
+  source: string;
+  facts: string[];
+  questions: string[];
+  scenario?: ConversationScenario;
+};
+export const packs: ConversationPack[] = [
   {
     id: "networking",
     title: "初対面から技術の話へ",
@@ -11,6 +26,21 @@ export const packs = [
       "What are you working on?",
       "What sessions would you recommend?",
     ],
+  },
+  {
+    id: "ai-development",
+    title: "AI時代の開発手法を聞く",
+    topic: "AI・開発組織",
+    partner: "ブースにいる架空の開発チームのエンジニア",
+    date: "2026-11-18",
+    source: "",
+    facts: [
+      "会社のサービス紹介から離れて、エンジニア同士で普段の開発の進め方を聞く練習です。",
+      "AIの活用範囲、商用ツールと自前基盤、組織体制、役割の変化、品質、導入効果を掘り下げます。",
+      "相手のチーム設定は架空です。実在企業の導入状況を示すものではありません。",
+    ],
+    questions: aiDevelopmentScenario.topics.map((topic) => topic.question),
+    scenario: aiDevelopmentScenario,
   },
   {
     id: "confluent",

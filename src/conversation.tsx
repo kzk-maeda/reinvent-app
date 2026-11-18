@@ -21,6 +21,7 @@ function Session({
   busy,
 }: PageProps & { initial: PracticeSession }) {
   const [session, setSession] = useState(initial);
+  const scenario = data.packs.find((p) => p.id === session.packId)?.scenario;
   const [text, setText] = useState("");
   const [hint, setHint] = useState("");
   const [hintText, setHintText] = useState("");
@@ -259,12 +260,13 @@ function Session({
     state,
   );
   const send = async () => {
+    const sentText = text;
     const s = await api<PracticeSession>(
       `/practice-sessions/${session.id}/turns`,
-      { text },
+      { text: sentText },
     );
     setSession(s);
-    setText("");
+    setText((current) => (current === sentText ? "" : current));
     await refresh();
   };
   return (
@@ -308,7 +310,9 @@ function Session({
               <div className="conversation-empty">
                 <div className="voice-orbit">re:</div>
                 <h2>最初の一言は、あなたから。</h2>
-                <p lang="en">“Hi! Could you give me a quick demo?”</p>
+                <p lang="en">
+                  “{scenario?.opening || "Hi! Could you give me a quick demo?"}”
+                </p>
                 <p className="muted">言い直しても、聞き返しても大丈夫。</p>
               </div>
             )}
@@ -478,6 +482,47 @@ function Session({
           )}
         </section>
         <aside>
+          {scenario && (
+            <details className="card padded">
+              <summary>このシナリオの質問例</summary>
+              <p className="muted">
+                架空のチームの開発手法を聞く練習です。質問を選ぶと入力欄に入ります。
+              </p>
+              <button
+                className="hint-phrase"
+                lang="en"
+                disabled={connected || finished}
+                onClick={() => setText(scenario.opening)}
+              >
+                {scenario.opening}
+              </button>
+              {scenario.topics.map((topic) => (
+                <section key={topic.label}>
+                  <h3>{topic.label}</h3>
+                  {[topic.question, topic.followUp].map((question) => (
+                    <button
+                      key={question}
+                      className="hint-phrase"
+                      lang="en"
+                      disabled={connected || finished}
+                      onClick={() => setText(question)}
+                    >
+                      {question}
+                    </button>
+                  ))}
+                </section>
+              ))}
+              <h3>自分の理解を確認する</h3>
+              <button
+                className="hint-phrase"
+                lang="en"
+                disabled={connected || finished}
+                onClick={() => setText(scenario.confirmation)}
+              >
+                {scenario.confirmation}
+              </button>
+            </details>
+          )}
           <section className="card padded">
             <h2>困ったときの一言</h2>
             {[

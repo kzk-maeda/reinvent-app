@@ -154,6 +154,105 @@ it("invalidates login on logout", async () => {
   await req("/logout", {});
   expect((await req("/bootstrap")).status).toBe(401);
 });
+it("practices internal AI development with follow-up examples instead of a product pitch", async () => {
+  const created = await req("/practice-sessions", {
+    packId: "ai-development",
+    mode: "エンジニアとの情報交換",
+    goal: "AIの利用範囲と基盤、役割の変化を聞く",
+    training: true,
+  });
+  expect(created.status).toBe(201);
+  const session = (await created.json()) as any;
+  const say = async (text: string) => {
+    const response = await req(`/practice-sessions/${session.id}/turns`, {
+      text,
+    });
+    expect(response.status).toBe(200);
+    return ((await response.json()) as any).turns.at(-1).text as string;
+  };
+  expect(
+    await say("Do you use tools like Factory, or an internal platform?"),
+  ).toContain("thin internal platform");
+  expect(
+    await say("How is your engineering organization structured?"),
+  ).toContain("four cross-functional product teams");
+  expect(
+    await say("How do your product teams and platform team divide the work?"),
+  ).toContain("A product team might test");
+  expect(await say("How have engineers' roles changed?")).toContain(
+    "framing problems",
+  );
+  const example = await say("Could you give me a concrete example?");
+  expect(example).toContain("junior engineer");
+  expect(await say("Could you say that again?")).toContain(example);
+  expect(await say("How do you review AI-generated changes?")).toContain(
+    "human review",
+  );
+  expect(await say("How do you measure the impact?")).toContain(
+    "review effort",
+  );
+  const hint = (await (
+    await req(`/practice-sessions/${session.id}/hint`, {
+      text: "自前の開発基盤があるか聞きたい",
+    })
+  ).json()) as any;
+  expect(hint.text).toContain("Do you use tools like Factory");
+  expect(await say("Thanks for sharing!")).toContain(
+    "Enjoy the rest of the conference",
+  );
+  expect(lab.budget.snapshot().totalYen).toBe(0);
+  expect(lab.budget.snapshot().events).toHaveLength(0);
+});
+
+it("sends the fictional engineering scenario to the real text adapter without declaring it verified", async () => {
+  await lab.voice.close();
+  const fetcher = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        id: "scenario-test",
+        status: "completed",
+        output: [
+          {
+            content: [
+              {
+                type: "output_text",
+                text: JSON.stringify({
+                  text: "We use a thin internal platform.",
+                }),
+              },
+            ],
+          },
+        ],
+        usage: { input_tokens: 100, output_tokens: 20 },
+      }),
+      { headers: { "Content-Type": "application/json" } },
+    ),
+  );
+  lab = createApp(
+    s,
+    { ...config, provider: "openai", apiKey: "fake-test-key" },
+    fetcher,
+  );
+  const session = (await (
+    await req("/practice-sessions", {
+      packId: "ai-development",
+      mode: "エンジニアとの情報交換",
+      goal: "自前基盤を聞く",
+    })
+  ).json()) as any;
+  await req(`/practice-sessions/${session.id}/turns`, {
+    text: "Have you built your own AI platform?",
+  });
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  const sent = JSON.parse(fetcher.mock.calls[0][1].body);
+  expect(sent.instructions).toContain(
+    "rather than pitching the company's services",
+  );
+  expect(sent.instructions).toContain("Do not assume the team uses Factory");
+  expect(sent.instructions).toContain('"verifiedFacts":[]');
+  expect(sent.instructions).toContain("two-person platform group");
+  expect(sent.input).toContain("Have you built your own AI platform?");
+});
 it("rejects reconciliation while hangup is in flight and preserves control", async () => {
   const reservation = lab.budget.reserve("voice", "gpt-realtime", 500);
   s.put("session", "race", { id: "race", status: "interrupted", turns: [] });

@@ -611,12 +611,17 @@ function Materials({ data, run, refresh, busy }: PageProps) {
 function PracticeSetup({ data, run, refresh, busy }: PageProps) {
   const query = new URLSearchParams(location.hash.split("?")[1]);
   const phrase = phrases.find((p) => p.id === query.get("phrase"));
-  const [pack, setPack] = useState(query.get("pack") || "networking");
-  const [mode, setMode] = useState(phrase ? "旅行練習" : "ネットワーキング");
+  const initialPack =
+    data.packs.find((p) => p.id === query.get("pack")) || data.packs[0];
+  const [pack, setPack] = useState(initialPack.id);
+  const [mode, setMode] = useState(
+    phrase ? "旅行練習" : initialPack.scenario?.mode || "ネットワーキング",
+  );
   const [goal, setGoal] = useState(
     phrase
       ? `「${phrase.ja}」を英語で伝えて、短い会話を続ける`
-      : "自分から2つ質問し、聞き返して、会話を終える",
+      : initialPack.scenario?.goal ||
+          "自分から2つ質問し、聞き返して、会話を終える",
   );
   const [training, setTraining] = useState(true);
   const selected = data.packs.find((p) => p.id === pack) || data.packs[0];
@@ -647,7 +652,20 @@ function PracticeSetup({ data, run, refresh, busy }: PageProps) {
           <h2>今日は、誰と話す？</h2>
           <label>
             題材と相手
-            <select value={pack} onChange={(e) => setPack(e.target.value)}>
+            <select
+              value={pack}
+              onChange={(e) => {
+                const next = data.packs.find((p) => p.id === e.target.value)!;
+                setPack(next.id);
+                if (next.scenario) {
+                  setMode(next.scenario.mode);
+                  setGoal(next.scenario.goal);
+                } else if (selected.scenario) {
+                  setMode("ネットワーキング");
+                  setGoal("自分から2つ質問し、聞き返して、会話を終える");
+                }
+              }}
+            >
               {data.packs.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.title} / {p.topic}
@@ -660,6 +678,7 @@ function PracticeSetup({ data, run, refresh, busy }: PageProps) {
             <select value={mode} onChange={(e) => setMode(e.target.value)}>
               {[
                 "ネットワーキング",
+                "エンジニアとの情報交換",
                 "企業デモ",
                 "AWS技術相談",
                 "技術トレンド",
@@ -695,7 +714,9 @@ function PracticeSetup({ data, run, refresh, busy }: PageProps) {
           <span className="eyebrow">CONVERSATION CONTEXT</span>
           <h2>{selected.title}</h2>
           <p>{selected.partner}</p>
-          <p className="muted">資料の基準日：{selected.date}</p>
+          <p className="muted">
+            {selected.scenario ? "練習設定日" : "資料の基準日"}：{selected.date}
+          </p>
           <ul>
             {selected.facts.map((f) => (
               <li key={f}>{f}</li>
@@ -706,12 +727,33 @@ function PracticeSetup({ data, run, refresh, busy }: PageProps) {
               元の公開資料 ↗
             </a>
           )}
-          <h3>質問のきっかけ</h3>
-          {selected.questions.map((q) => (
-            <p lang="en" className="english" key={q}>
-              {q}
-            </p>
-          ))}
+          <h3>{selected.scenario ? "話の切り出し方" : "質問のきっかけ"}</h3>
+          {selected.scenario ? (
+            <>
+              <p lang="en" className="english">
+                {selected.scenario.opening}
+              </p>
+              <h3>聞きたいことと深掘り</h3>
+              {selected.scenario.topics.map((topic) => (
+                <section key={topic.label}>
+                  <h4>{topic.label}</h4>
+                  <p lang="en" className="english">
+                    {topic.question}
+                  </p>
+                  <p lang="en">{topic.followUp}</p>
+                </section>
+              ))}
+              <p lang="en" className="english">
+                {selected.scenario.confirmation}
+              </p>
+            </>
+          ) : (
+            selected.questions.map((q) => (
+              <p lang="en" className="english" key={q}>
+                {q}
+              </p>
+            ))
+          )}
           <p className="muted">
             標準5〜7分。実音声は最大10分。
             {data.connections.simulator
