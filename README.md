@@ -67,6 +67,10 @@ npm start
 
 iPhoneからPCへ接続する際、マイクには信頼されたHTTPSが必要です。利用端末が信頼する証明書を用意し、`.env`に`HOST=0.0.0.0`、`APP_ORIGIN=https://PCのホスト名:5173`、`LOCAL_TLS_KEY`、`LOCAL_TLS_CERT`を指定して`npm run dev`を使います。iPhone上の127.0.0.1はPCではありません。証明書の信頼設定と実機Safari・VoiceOverの確認は本人の端末で行ってください。
 
+## Cloudflareの基盤
+
+[Cloudflare向けのTerraform](infra/cloudflare/README.md)で、D1・R2・本人限定のAccess・Workersのカスタムドメインを管理します。基盤を先に作成でき、アプリの公開にはWorkersへの移植が必要です。
+
 ## テストと状態
 
 ```sh

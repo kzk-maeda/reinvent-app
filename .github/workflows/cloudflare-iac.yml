@@ -1,0 +1,28 @@
+name: Cloudflare IaC checks
+on:
+  push:
+    paths:
+      - "infra/cloudflare/**"
+      - ".github/workflows/cloudflare-iac.yml"
+  pull_request:
+    paths:
+      - "infra/cloudflare/**"
+      - ".github/workflows/cloudflare-iac.yml"
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: infra/cloudflare
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.17.2
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false -input=false -lockfile=readonly
+      - run: terraform validate
+      - run: terraform test

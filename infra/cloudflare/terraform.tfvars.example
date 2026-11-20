@@ -1,0 +1,7 @@
+account_id                  = "00000000000000000000000000000000"
+zone_id                     = "11111111111111111111111111111111"
+hostname                    = "english-lab.example.com"
+owner_email                 = "owner@example.com"
+access_identity_provider_id = "22222222-2222-2222-2222-222222222222"
+worker_name                 = "reinvent-english-lab"
+attach_worker_hostname      = false

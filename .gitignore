@@ -84,6 +84,8 @@ out
 # Nuxt.js build / generate output
 .nuxt
 dist
+wrangler.generated.json
+.wrangler/
 .output
 
 # NitroJS
