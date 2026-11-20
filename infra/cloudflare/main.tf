@@ -18,21 +18,23 @@ resource "cloudflare_r2_bucket" "materials" {
 }
 
 resource "cloudflare_zero_trust_access_application" "lab" {
-  account_id                 = var.account_id
-  name                       = var.worker_name
-  type                       = "self_hosted"
-  domain                     = var.hostname
-  destinations               = [{ type = "public", uri = var.hostname }]
-  allowed_idps               = [var.access_identity_provider_id]
-  app_launcher_visible       = false
-  http_only_cookie_attribute = true
-  session_duration           = "12h"
+  account_id                  = var.account_id
+  name                        = var.worker_name
+  type                        = "self_hosted"
+  domain                      = var.hostname
+  destinations                = [{ type = "public", uri = var.hostname }]
+  allowed_idps                = [var.access_identity_provider_id]
+  allow_authenticate_via_warp = false
+  app_launcher_visible        = false
+  http_only_cookie_attribute  = true
+  session_duration            = "12h"
 
   policies = [{
     name       = "Owner only"
     decision   = "allow"
     precedence = 1
     include    = [{ email = { email = var.owner_email } }]
+    require    = [{ login_method = { id = var.access_identity_provider_id } }]
   }]
 }
 

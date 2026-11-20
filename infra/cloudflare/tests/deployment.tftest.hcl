@@ -24,8 +24,10 @@ run "foundation" {
     condition = (
       one(cloudflare_zero_trust_access_application.lab.destinations).uri == var.hostname &&
       one(cloudflare_zero_trust_access_application.lab.allowed_idps) == var.access_identity_provider_id &&
+      !cloudflare_zero_trust_access_application.lab.allow_authenticate_via_warp &&
       one(cloudflare_zero_trust_access_application.lab.policies).decision == "allow" &&
-      one(one(cloudflare_zero_trust_access_application.lab.policies).include).email.email == var.owner_email
+      one(one(cloudflare_zero_trust_access_application.lab.policies).include).email.email == var.owner_email &&
+      one(one(cloudflare_zero_trust_access_application.lab.policies).require).login_method.id == var.access_identity_provider_id
     )
     error_message = "Access must secure the whole hostname and allow only the configured email and login method."
   }
