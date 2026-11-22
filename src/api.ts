@@ -11,8 +11,10 @@ export async function api<T = any>(
   body?: unknown,
   method = body === undefined ? "GET" : "POST",
   operationId = crypto.randomUUID(),
+  signal?: AbortSignal,
 ): Promise<T> {
   const r = await fetch(`/api${path}`, {
+    signal,
     method,
     credentials: "same-origin",
     headers: {

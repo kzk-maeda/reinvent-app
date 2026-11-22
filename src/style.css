@@ -1148,6 +1148,10 @@ dialog::backdrop {
   width: 100%;
   height: 35px;
 }
+.reading-audio {
+  width: 100%;
+  max-width: 100%;
+}
 .conversation > p {
   font-size: 0.68rem;
 }

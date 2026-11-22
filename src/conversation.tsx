@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PageProps } from "./main.tsx";
 import type { PracticeSession, Turn } from "../shared/domain.ts";
 import { api } from "./api.ts";
+import { useReadAloud } from "./read-aloud.tsx";
 export default function Conversation(props: PageProps & { id: string }) {
   const s = props.data.sessions.find((s) => s.id === props.id);
   if (!s)
@@ -18,9 +19,12 @@ function Session({
   data,
   run,
   refresh,
+  refreshUsage,
   busy,
 }: PageProps & { initial: PracticeSession }) {
   const [session, setSession] = useState(initial);
+  const pack = data.packs.find((p) => p.id === session.packId);
+  const scenario = pack?.scenario;
   const [text, setText] = useState("");
   const [hint, setHint] = useState("");
   const [hintText, setHintText] = useState("");
@@ -30,7 +34,6 @@ function Session({
     initial.training && data.profile.showTranscript,
   );
   const [translation, setTranslation] = useState(data.profile.showTranslation);
-  const [translations, setTranslations] = useState<Record<string, string>>({});
   const [elapsed, setElapsed] = useState(0);
   const pc = useRef<RTCPeerConnection | undefined>(undefined);
   const stream = useRef<MediaStream | undefined>(undefined);
@@ -38,6 +41,17 @@ function Session({
   const audio = useRef<HTMLAudioElement>(null);
   const generation = useRef(0);
   const activeRef = useRef(false);
+  const connected = ["connecting", "active", "responding", "muted"].includes(
+    state,
+  );
+  const readAloud = useReadAloud(
+    session.id,
+    !!data.connections.speech,
+    data.profile.speed,
+    data.connections.speechReservationYen || 0,
+    connected,
+    refreshUsage,
+  );
   const list = useRef<HTMLDivElement>(null);
   const statusLabels: Record<string, string> = {
     ready: "準備完了",
@@ -49,6 +63,7 @@ function Session({
     failed: "接続を終了しました",
   };
   const dispose = () => {
+    readAloud.stop();
     generation.current++;
     activeRef.current = false;
     stream.current?.getTracks().forEach((t) => t.stop());
@@ -141,6 +156,7 @@ function Session({
     if (list.current) list.current.scrollTop = list.current.scrollHeight;
   }, [session.turns.length]);
   async function startVoice() {
+    readAloud.stop();
     if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection)
       throw new Error(
         "このブラウザでは音声接続できません。テキスト練習を使えます",
@@ -246,39 +262,35 @@ function Session({
     if ("speechSynthesis" in window) speechSynthesis.cancel();
     setState(muted ? "muted" : "active");
   };
-  const speak = (t: string) => {
-    if (!("speechSynthesis" in window)) return;
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang = "en-US";
-    u.rate = data.profile.speed;
-    speechSynthesis.speak(u);
-  };
   const finished = session.status === "completed";
-  const connected = ["connecting", "active", "responding", "muted"].includes(
-    state,
-  );
   const send = async () => {
+    const sentText = text;
     const s = await api<PracticeSession>(
       `/practice-sessions/${session.id}/turns`,
-      { text },
+      { text: sentText },
     );
     setSession(s);
-    setText("");
+    setText((current) => (current === sentText ? "" : current));
     await refresh();
   };
   return (
     <>
-      <a className="back" href="#/practice">
+      <a
+        className="back"
+        href={
+          scenario?.booth ? `#/practice?pack=${session.packId}` : "#/practice"
+        }
+      >
         ← 会話の準備へ
       </a>
       <div className="page-heading">
         <p className="eyebrow">{session.mode} / CONVERSATION LAB</p>
-        <h1>聞きたいことから、話そう。</h1>
-        <p className="muted">
-          {data.packs.find((p) => p.id === session.packId)?.partner}
-        </p>
+        <h1>{scenario?.booth ? pack?.title : "聞きたいことから、話そう。"}</h1>
+        <p className="muted">{pack?.partner}</p>
       </div>
+      <p className="muted">
+        英語会話のロールプレイです。AIが練習相手を演じ、実在する企業の担当者本人とは異なります。
+      </p>
       {session.provider === "simulator" && (
         <p className="warning">
           操作検証モード：応答と講評は固定例です。実際の英語力・製品知識の評価は行いません。
@@ -308,7 +320,9 @@ function Session({
               <div className="conversation-empty">
                 <div className="voice-orbit">re:</div>
                 <h2>最初の一言は、あなたから。</h2>
-                <p lang="en">“Hi! Could you give me a quick demo?”</p>
+                <p lang="en">
+                  “{scenario?.opening || "Hi! Could you give me a quick demo?"}”
+                </p>
                 <p className="muted">言い直しても、聞き返しても大丈夫。</p>
               </div>
             )}
@@ -322,8 +336,8 @@ function Session({
                 ) : (
                   <p className="muted">会話中の文字起こしは非表示です</p>
                 )}
-                {translation && translations[t.id] && (
-                  <p lang="ja">{translations[t.id]}</p>
+                {translation && t.translation && (
+                  <p lang="ja">{t.translation}</p>
                 )}
                 {(transcript || finished) && (
                   <div className="turn-actions">
@@ -345,19 +359,48 @@ function Session({
                     >
                       保存 ＋
                     </button>
-                    <button onClick={() => speak(t.text)}>聞く</button>
-                    {translation && (
+                    <button
+                      disabled={
+                        connected || readAloud.loading || !readAloud.available
+                      }
+                      onClick={() => void readAloud.speak(t)}
+                    >
+                      聞く
+                    </button>
+                    {(session.training || finished) && (
                       <button
-                        disabled={busy}
+                        disabled={busy || connected}
                         onClick={() =>
                           void run(async () => {
-                            const r = await api("/explain", {
-                              text: `日本語訳: ${t.text}`,
-                            });
-                            setTranslations({
-                              ...translations,
-                              [t.id]: r.text,
-                            });
+                            if (!t.translation) {
+                              try {
+                                const r = await api<{
+                                  translation: string;
+                                  text: string;
+                                  provider: string;
+                                  model: string;
+                                }>(
+                                  `/practice-sessions/${session.id}/turns/${t.id}/translation`,
+                                  {},
+                                );
+                                setSession((current) => ({
+                                  ...current,
+                                  turns: current.turns.map((turn) =>
+                                    turn.id === t.id && turn.text === r.text
+                                      ? {
+                                          ...turn,
+                                          translation: r.translation,
+                                          translationProvider: r.provider,
+                                          translationModel: r.model,
+                                        }
+                                      : turn,
+                                  ),
+                                }));
+                              } finally {
+                                await refreshUsage().catch(() => {});
+                              }
+                            }
+                            setTranslation(true);
                           }, "訳を表示しました")
                         }
                       >
@@ -478,6 +521,48 @@ function Session({
           )}
         </section>
         <aside>
+          {readAloud.controls}
+          {scenario && (
+            <details className="card padded">
+              <summary>このシナリオの質問例</summary>
+              <p className="muted">
+                架空のチームの開発手法を聞く練習です。質問を選ぶと入力欄に入ります。
+              </p>
+              <button
+                className="hint-phrase"
+                lang="en"
+                disabled={connected || finished}
+                onClick={() => setText(scenario.opening)}
+              >
+                {scenario.opening}
+              </button>
+              {scenario.topics.map((topic) => (
+                <section key={topic.label}>
+                  <h3>{topic.label}</h3>
+                  {[topic.question, topic.followUp].map((question) => (
+                    <button
+                      key={question}
+                      className="hint-phrase"
+                      lang="en"
+                      disabled={connected || finished}
+                      onClick={() => setText(question)}
+                    >
+                      {question}
+                    </button>
+                  ))}
+                </section>
+              ))}
+              <h3>自分の理解を確認する</h3>
+              <button
+                className="hint-phrase"
+                lang="en"
+                disabled={connected || finished}
+                onClick={() => setText(scenario.confirmation)}
+              >
+                {scenario.confirmation}
+              </button>
+            </details>
+          )}
           <section className="card padded">
             <h2>困ったときの一言</h2>
             {[

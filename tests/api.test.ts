@@ -1,6 +1,8 @@
 import { it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Store } from "../server/db.ts";
 import { createApp, type AppConfig } from "../server/app.ts";
+import type { PracticeSession } from "../shared/domain.ts";
+import { productDevelopmentPackId } from "../shared/scenarios.ts";
 let s: Store;
 let lab: ReturnType<typeof createApp>;
 let cookie: string;
@@ -39,8 +41,115 @@ beforeEach(async () => {
   cookie = r.headers.get("set-cookie")!.split(";")[0];
 });
 afterEach(async () => {
+  lab.speech.close();
   await lab.voice.close();
   s.close();
+});
+it("translates utterances through a dedicated provider, caches them, and invalidates corrections", async () => {
+  await lab.voice.close();
+  const fetcher = vi.fn().mockImplementation(
+    async () =>
+      new Response(
+        JSON.stringify({
+          id: "translated",
+          status: "completed",
+          output: [
+            {
+              content: [
+                {
+                  type: "output_text",
+                  text: JSON.stringify({ text: "会社名を教えてください。" }),
+                },
+              ],
+            },
+          ],
+          usage: { input_tokens: 100, output_tokens: 20 },
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+  );
+  lab = createApp(
+    s,
+    { ...config, provider: "openai", apiKey: "fake-key" },
+    fetcher,
+  );
+  const session = (await (
+    await req("/practice-sessions", {
+      packId: "confluent",
+      mode: "企業デモ",
+      goal: "会社名を聞く",
+    })
+  ).json()) as any;
+  s.put("session", session.id, {
+    ...session,
+    turns: [
+      {
+        id: "user-turn",
+        role: "user",
+        text: "What is your company name?",
+        at: new Date().toISOString(),
+      },
+    ],
+  });
+  const path = `/practice-sessions/${session.id}/turns/user-turn/translation`;
+  expect((await req(path, {}, "POST", false)).status).toBe(401);
+  const first = await req(path, {});
+  expect(first.status).toBe(200);
+  expect(((await first.json()) as any).translation).toBe(
+    "会社名を教えてください。",
+  );
+  expect(((await (await req(path, {})).json()) as any).cached).toBe(true);
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(fetcher.mock.calls[0][1].body).instructions).toContain(
+    "Translate the English conversation utterance",
+  );
+  expect(s.get<any>("session", session.id).turns[0].translation).toBe(
+    "会社名を教えてください。",
+  );
+  await req(
+    `/practice-sessions/${session.id}/turns/user-turn`,
+    { text: "Could you show me a demo?" },
+    "PATCH",
+  );
+  expect(
+    s.get<any>("session", session.id).turns[0].translation,
+  ).toBeUndefined();
+  await req(path, {});
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(
+    lab.budget.snapshot().events.every((event) => event.kind === "translation"),
+  ).toBe(true);
+});
+it("keeps simulator history from becoming paid translation or speech after reconnecting", async () => {
+  const session = (await (
+    await req("/practice-sessions", {
+      packId: "confluent",
+      mode: "企業デモ",
+      goal: "会社名を聞く",
+    })
+  ).json()) as any;
+  s.put("session", session.id, {
+    ...session,
+    turns: [
+      { id: "old", role: "user", text: "Hello", at: new Date().toISOString() },
+    ],
+  });
+  const path = `/practice-sessions/${session.id}/turns/old`;
+  await req(`${path}/translation`, {});
+  expect(s.get<any>("session", session.id).turns[0].translationProvider).toBe(
+    "simulator",
+  );
+  await lab.voice.close();
+  const fetcher = vi.fn();
+  lab = createApp(
+    s,
+    { ...config, provider: "openai", apiKey: "fake-key" },
+    fetcher,
+  );
+  expect((await req(`${path}/translation`, {})).status).toBe(400);
+  expect((await req(`${path}/speech`, {})).status).toBe(400);
+  expect(fetcher).not.toHaveBeenCalled();
+  expect(lab.budget.snapshot().events).toHaveLength(0);
 });
 it("protects every data and AI boundary and rejects CSRF", async () => {
   for (const path of [
@@ -153,6 +262,149 @@ it("imports subtitles once and never calls AI on repeated reads", async () => {
 it("invalidates login on logout", async () => {
   await req("/logout", {});
   expect((await req("/bootstrap")).status).toBe(401);
+});
+it("practices internal AI development with follow-up examples instead of a product pitch", async () => {
+  const created = await req("/practice-sessions", {
+    packId: "ai-development",
+    mode: "エンジニアとの情報交換",
+    goal: "AIの利用範囲と基盤、役割の変化を聞く",
+    training: true,
+  });
+  expect(created.status).toBe(201);
+  const session = (await created.json()) as any;
+  const say = async (text: string) => {
+    const response = await req(`/practice-sessions/${session.id}/turns`, {
+      text,
+    });
+    expect(response.status).toBe(200);
+    return ((await response.json()) as any).turns.at(-1).text as string;
+  };
+  expect(
+    await say("Do you use tools like Factory, or an internal platform?"),
+  ).toContain("thin internal platform");
+  expect(
+    await say("How is your engineering organization structured?"),
+  ).toContain("four cross-functional product teams");
+  expect(
+    await say("How do your product teams and platform team divide the work?"),
+  ).toContain("A product team might test");
+  expect(await say("How have engineers' roles changed?")).toContain(
+    "framing problems",
+  );
+  const example = await say("Could you give me a concrete example?");
+  expect(example).toContain("junior engineer");
+  expect(await say("Could you say that again?")).toContain(example);
+  expect(await say("How do you review AI-generated changes?")).toContain(
+    "human review",
+  );
+  expect(await say("How do you measure the impact?")).toContain(
+    "review effort",
+  );
+  const hint = (await (
+    await req(`/practice-sessions/${session.id}/hint`, {
+      text: "自前の開発基盤があるか聞きたい",
+    })
+  ).json()) as any;
+  expect(hint.text).toContain("Do you use tools like Factory");
+  expect(await say("Thanks for sharing!")).toContain(
+    "Enjoy the rest of the conference",
+  );
+  expect(lab.budget.snapshot().totalYen).toBe(0);
+  expect(lab.budget.snapshot().events).toHaveLength(0);
+});
+
+it("continues from the product introduction into its team's workflow, size, and individual goals", async () => {
+  const created = await req("/practice-sessions", {
+    packId: productDevelopmentPackId,
+    mode: "エンジニアとの情報交換",
+    goal: "ブースで製品の開発体制とKPIを聞く",
+  });
+  expect(created.status).toBe(201);
+  const { id } = (await created.json()) as PracticeSession;
+  const ask = async (text: string) => {
+    const response = await req(`/practice-sessions/${id}/turns`, { text });
+    expect(response.status).toBe(200);
+    return ((await response.json()) as PracticeSession).turns.at(-1)?.text;
+  };
+  expect(await ask("What does SyncRelay do?")).toContain(
+    "I'm Maya, a backend engineer on SyncRelay",
+  );
+  expect(await ask("Do you have a software factory?")).toContain(
+    "engineers approve what ships",
+  );
+  expect(await ask("Could you give me an example?")).toContain(
+    "connector retry change",
+  );
+  expect(await ask("How many engineers are on your team?")).toContain(
+    "five engineers, one product manager, and one designer",
+  );
+  expect(await ask("What are your team KPIs?")).toContain(
+    "change lead time and change failure rate",
+  );
+  expect(await ask("What about you personally?")).toContain(
+    "duplicate alerts per thousand syncs by 25%",
+  );
+  const both = await ask(
+    "What KPIs do you track for teams and individual engineers?",
+  );
+  expect(both).toContain("delivery lead time");
+  expect(both).toContain("duplicate alerts");
+  expect(lab.budget.snapshot().events).toHaveLength(0);
+});
+
+it("sends the named product engineer, workflow and KPIs to the text adapter", async () => {
+  await lab.voice.close();
+  const fetcher = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        id: "scenario-test",
+        status: "completed",
+        output: [
+          {
+            content: [
+              {
+                type: "output_text",
+                text: JSON.stringify({
+                  text: "Our team tracks change lead time and change failure rate.",
+                }),
+              },
+            ],
+          },
+        ],
+        usage: { input_tokens: 100, output_tokens: 20 },
+      }),
+      { headers: { "Content-Type": "application/json" } },
+    ),
+  );
+  lab = createApp(
+    s,
+    { ...config, provider: "openai", apiKey: "fake-test-key" },
+    fetcher,
+  );
+  const session = (await (
+    await req("/practice-sessions", {
+      packId: productDevelopmentPackId,
+      mode: "エンジニアとの情報交換",
+      goal: "製品の開発体制を聞く",
+    })
+  ).json()) as any;
+  await req(`/practice-sessions/${session.id}/turns`, {
+    text: "What KPIs do you track on your team?",
+  });
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  const sent = JSON.parse(fetcher.mock.calls[0][1].body);
+  expect(sent.instructions).toContain(
+    "You are Maya, a backend engineer who personally builds and operates SyncRelay",
+  );
+  expect(sent.instructions).toContain("one or two sentences");
+  expect(sent.instructions).toContain('"verifiedFacts":[]');
+  expect(sent.instructions).toContain(
+    "five engineers, one product manager and one designer",
+  );
+  expect(sent.instructions).toContain(
+    "duplicate alerts per 1,000 syncs by 25%",
+  );
+  expect(sent.input).toContain("What KPIs do you track on your team?");
 });
 it("rejects reconciliation while hangup is in flight and preserves control", async () => {
   const reservation = lab.budget.reserve("voice", "gpt-realtime", 500);
