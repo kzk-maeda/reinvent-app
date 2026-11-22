@@ -1,6 +1,8 @@
 import { it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Store } from "../server/db.ts";
 import { createApp, type AppConfig } from "../server/app.ts";
+import type { PracticeSession } from "../shared/domain.ts";
+import { productDevelopmentPackId } from "../shared/scenarios.ts";
 let s: Store;
 let lab: ReturnType<typeof createApp>;
 let cookie: string;
@@ -311,7 +313,46 @@ it("practices internal AI development with follow-up examples instead of a produ
   expect(lab.budget.snapshot().events).toHaveLength(0);
 });
 
-it("sends the fictional engineering scenario to the real text adapter without declaring it verified", async () => {
+it("continues from the product introduction into its team's workflow, size, and individual goals", async () => {
+  const created = await req("/practice-sessions", {
+    packId: productDevelopmentPackId,
+    mode: "エンジニアとの情報交換",
+    goal: "ブースで製品の開発体制とKPIを聞く",
+  });
+  expect(created.status).toBe(201);
+  const { id } = (await created.json()) as PracticeSession;
+  const ask = async (text: string) => {
+    const response = await req(`/practice-sessions/${id}/turns`, { text });
+    expect(response.status).toBe(200);
+    return ((await response.json()) as PracticeSession).turns.at(-1)?.text;
+  };
+  expect(await ask("What does SyncRelay do?")).toContain(
+    "I'm Maya, a backend engineer on SyncRelay",
+  );
+  expect(await ask("Do you have a software factory?")).toContain(
+    "engineers approve what ships",
+  );
+  expect(await ask("Could you give me an example?")).toContain(
+    "connector retry change",
+  );
+  expect(await ask("How many engineers are on your team?")).toContain(
+    "five engineers, one product manager, and one designer",
+  );
+  expect(await ask("What are your team KPIs?")).toContain(
+    "change lead time and change failure rate",
+  );
+  expect(await ask("What about you personally?")).toContain(
+    "duplicate alerts per thousand syncs by 25%",
+  );
+  const both = await ask(
+    "What KPIs do you track for teams and individual engineers?",
+  );
+  expect(both).toContain("delivery lead time");
+  expect(both).toContain("duplicate alerts");
+  expect(lab.budget.snapshot().events).toHaveLength(0);
+});
+
+it("sends the named product engineer, workflow and KPIs to the text adapter", async () => {
   await lab.voice.close();
   const fetcher = vi.fn().mockResolvedValue(
     new Response(
@@ -324,7 +365,7 @@ it("sends the fictional engineering scenario to the real text adapter without de
               {
                 type: "output_text",
                 text: JSON.stringify({
-                  text: "We use a thin internal platform.",
+                  text: "Our team tracks change lead time and change failure rate.",
                 }),
               },
             ],
@@ -342,23 +383,28 @@ it("sends the fictional engineering scenario to the real text adapter without de
   );
   const session = (await (
     await req("/practice-sessions", {
-      packId: "ai-development",
+      packId: productDevelopmentPackId,
       mode: "エンジニアとの情報交換",
-      goal: "自前基盤を聞く",
+      goal: "製品の開発体制を聞く",
     })
   ).json()) as any;
   await req(`/practice-sessions/${session.id}/turns`, {
-    text: "Have you built your own AI platform?",
+    text: "What KPIs do you track on your team?",
   });
   expect(fetcher).toHaveBeenCalledTimes(1);
   const sent = JSON.parse(fetcher.mock.calls[0][1].body);
   expect(sent.instructions).toContain(
-    "rather than pitching the company's services",
+    "You are Maya, a backend engineer who personally builds and operates SyncRelay",
   );
-  expect(sent.instructions).toContain("Do not assume the team uses Factory");
+  expect(sent.instructions).toContain("one or two sentences");
   expect(sent.instructions).toContain('"verifiedFacts":[]');
-  expect(sent.instructions).toContain("two-person platform group");
-  expect(sent.input).toContain("Have you built your own AI platform?");
+  expect(sent.instructions).toContain(
+    "five engineers, one product manager and one designer",
+  );
+  expect(sent.instructions).toContain(
+    "duplicate alerts per 1,000 syncs by 25%",
+  );
+  expect(sent.input).toContain("What KPIs do you track on your team?");
 });
 it("rejects reconciliation while hangup is in flight and preserves control", async () => {
   const reservation = lab.budget.reserve("voice", "gpt-realtime", 500);

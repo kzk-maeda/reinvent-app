@@ -23,7 +23,8 @@ function Session({
   busy,
 }: PageProps & { initial: PracticeSession }) {
   const [session, setSession] = useState(initial);
-  const scenario = data.packs.find((p) => p.id === session.packId)?.scenario;
+  const pack = data.packs.find((p) => p.id === session.packId);
+  const scenario = pack?.scenario;
   const [text, setText] = useState("");
   const [hint, setHint] = useState("");
   const [hintText, setHintText] = useState("");
@@ -274,15 +275,18 @@ function Session({
   };
   return (
     <>
-      <a className="back" href="#/practice">
+      <a
+        className="back"
+        href={
+          scenario?.booth ? `#/practice?pack=${session.packId}` : "#/practice"
+        }
+      >
         ← 会話の準備へ
       </a>
       <div className="page-heading">
         <p className="eyebrow">{session.mode} / CONVERSATION LAB</p>
-        <h1>聞きたいことから、話そう。</h1>
-        <p className="muted">
-          {data.packs.find((p) => p.id === session.packId)?.partner}
-        </p>
+        <h1>{scenario?.booth ? pack?.title : "聞きたいことから、話そう。"}</h1>
+        <p className="muted">{pack?.partner}</p>
       </div>
       <p className="muted">
         英語会話のロールプレイです。AIが練習相手を演じ、実在する企業の担当者本人とは異なります。

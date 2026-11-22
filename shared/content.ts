@@ -1,5 +1,7 @@
 import {
   aiDevelopmentScenario,
+  productDevelopmentPackId,
+  productDevelopmentScenario,
   type ConversationScenario,
 } from "./scenarios.ts";
 export type ConversationPack = {
@@ -32,6 +34,20 @@ export const packs: ConversationPack[] = [
       "What are you working on?",
       "What sessions would you recommend?",
     ],
+  },
+  {
+    id: productDevelopmentPackId,
+    title: "製品ブースで開発の裏側を聞く",
+    topic: "開発基盤・チーム・KPI",
+    partner: "SyncRelayのバックエンドエンジニア Maya（架空）",
+    date: "2026-11-22",
+    source: "",
+    facts: [
+      "データ連携を監視する製品 SyncRelay のブースで、その製品を作っているエンジニアに話を聞く設定です。",
+      "製品概要を聞いたら、開発基盤、チームの人数と責任範囲、チームと個人それぞれの指標を掘り下げます。",
+    ],
+    questions: productDevelopmentScenario.topics.map((topic) => topic.question),
+    scenario: productDevelopmentScenario,
   },
   {
     id: "ai-development",

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { productDevelopmentPackId } from "../../shared/scenarios.ts";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -128,5 +129,53 @@ test("initializes the scenario from a link and resets its defaults when changing
   await expect(page.getByLabel("会話の場面")).toHaveValue("ネットワーキング");
   await expect(page.getByLabel("達成したいこと")).toHaveValue(
     "自分から2つ質問し、聞き返して、会話を終える",
+  );
+});
+
+test("opens the product developer role from booth practice and keeps the selected role on return", async ({
+  page,
+}) => {
+  await page.getByRole("link", { name: "ブース会話", exact: true }).click();
+  await page
+    .getByRole("link", { name: /製品ブースで開発の裏側を聞く/ })
+    .click();
+  await expect(page.getByLabel("題材と相手")).toHaveValue(
+    productDevelopmentPackId,
+  );
+  await expect(page.getByLabel("達成したいこと")).toHaveValue(
+    /チームと個人が追う指標/,
+  );
+  await page.setViewportSize({ width: 320, height: 700 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByRole("button", { name: "会話を準備する" }).click();
+  await expect(
+    page.getByRole("heading", { name: "製品ブースで開発の裏側を聞く" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("SyncRelayのバックエンドエンジニア Maya（架空）", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.getByText("このシナリオの質問例", { exact: true }).click();
+  await page
+    .getByRole("button", {
+      name: "What do you measure at the team level versus the individual level?",
+      exact: true,
+    })
+    .click();
+  await page.getByRole("button", { name: "送信 ↑", exact: true }).click();
+  await expect(page.locator(".turn.assistant")).toContainText(
+    "delivery lead time",
+  );
+  await expect(page.locator(".turn.assistant")).toContainText(
+    "duplicate alerts",
+  );
+  await page.getByRole("link", { name: "会話の準備へ" }).click();
+  await expect(page.getByLabel("題材と相手")).toHaveValue(
+    productDevelopmentPackId,
   );
 });

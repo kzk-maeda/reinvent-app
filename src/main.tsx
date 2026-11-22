@@ -16,6 +16,7 @@ import type {
   ReviewItem,
 } from "../shared/domain.ts";
 import { phrases, packs } from "../shared/content.ts";
+import { productDevelopmentPackId } from "../shared/scenarios.ts";
 import "./style.css";
 import UsageReconciliation, {
   BudgetSettings,
@@ -249,7 +250,7 @@ function App() {
             ) : route.startsWith("/material/") ? (
               <Video {...props} id={route.split("/")[2]} />
             ) : route === "/practice" || route.startsWith("/practice?") ? (
-              <PracticeSetup {...props} />
+              <PracticeSetup key={route} {...props} />
             ) : route.startsWith("/practice/") ? (
               <Conversation {...props} id={route.split("/")[2]} />
             ) : route === "/phrases" ? (
@@ -453,7 +454,13 @@ function Home({ data }: PageProps) {
               <div>
                 <span className="eyebrow">{p.topic}</span>
                 <h3>{p.title}</h3>
-                <p>公開資料を題材にした会話</p>
+                <p>
+                  {p.scenario?.booth
+                    ? p.partner
+                    : p.scenario
+                      ? "エンジニア同士の情報交換"
+                      : "公開資料を題材にした会話"}
+                </p>
               </div>
               <span>↗</span>
             </a>
@@ -631,6 +638,9 @@ function PracticeSetup({ data, run, refresh, busy }: PageProps) {
   );
   const [training, setTraining] = useState(true);
   const selected = data.packs.find((p) => p.id === pack) || data.packs[0];
+  const productBooth = data.packs.find(
+    (p) => p.id === productDevelopmentPackId,
+  );
   return (
     <>
       <Heading
@@ -638,6 +648,14 @@ function PracticeSetup({ data, run, refresh, busy }: PageProps) {
         title="ブース会話"
         description="知りたいことを、自分から聞くための練習。"
       />
+      {productBooth && pack !== productBooth.id && (
+        <a className="topic-row" href={`#/practice?pack=${productBooth.id}`}>
+          <div>
+            <h2>{productBooth.title}</h2>
+            <p>製品を作るエンジニアに、開発基盤・チームの規模・KPIを聞く →</p>
+          </div>
+        </a>
+      )}
       <div className="two-columns">
         <form
           className="card padded"
